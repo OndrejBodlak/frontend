@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>internal-api — Spring Boot</title>
+<style>
+  body { margin:0; background:#0A0C0A; color:#A8D68F; font-family: 'Courier New', monospace; padding: 24px; font-size: 0.85rem; }
+  .path { color: #8A8F82; margin-bottom: 16px; }
+  .path span { color: #E8E6DD; }
+  pre { background: #12160F; border: 1px solid #232B1E; border-radius: 6px; padding: 16px; overflow-x: auto; line-height: 1.6; }
+  .k { color: #9D7FD1; }
+  .v { color: #E8E6DD; }
+  .flag { color: #C4685A; }
+</style>
+</head>
+<body>
+  <p class="path">GET <span>/actuator/env</span></p>
+<pre>{
+  "activeProfiles": ["production"],
+  "propertySources": [
+    {
+      "name": "systemEnvironment",
+      "properties": {
+        "<span class="k">JAVA_HOME</span>": { "<span class="k">value</span>": "<span class="v">/usr/lib/jvm/java-21-openjdk</span>" },
+        "<span class="k">SPRING_DATASOURCE_URL</span>": { "<span class="k">value</span>": "<span class="v">jdbc:postgresql://internal-db:5432/thistlesec</span>" },
+        "<span class="k">SPRING_DATASOURCE_PASSWORD</span>": { "<span class="k">value</span>": "<span class="v">****** (masked)</span>" },
+        "<span class="k">DEBUG_FLAG_DO_NOT_SHIP</span>": { "<span class="k">value</span>": "<span class="flag">thistle{spr1ng_b00t_4ctu4t0r_3nv}</span>" },
+        "<span class="k">JWT_SECRET</span>": { "<span class="k">value</span>": "****** (masked)" }
+      }
+    }
+  ]
+}</pre>
+  <p style="color:#8A8F82; margin-top:16px;">
+    Actuator endpointy (<code>/actuator/env</code>, <code>/actuator/heapdump</code>...) by nikdy
+    neměly být veřejně dostupné v produkci bez autentizace — přesně tahle chybná konfigurace
+    unikla i v řadě reálných CVE hlášení.
+  </p>
+</body>
+</html>

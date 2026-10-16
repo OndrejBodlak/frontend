@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThistleSec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --void: #0A0C0A; --panel: #12160F; --panel2: #161B12; --line: #232B1E;
+    --bloom: #9D7FD1; --bloomdim: #6B5490; --spine: #7FA66B; --spinebright: #A8D68F;
+    --ink: #E8E6DD; --inkdim: #8A8F82; --danger: #C4685A;
+    --font-display: 'Rajdhani', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background-color: var(--void);
+    background-image:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(157,127,209,0.10), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(127,166,107,0.08), transparent 55%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/></svg>");
+    color: var(--ink); font-family: var(--font-display); min-height: 100vh;
+  }
+  a { color: inherit; }
+  ::selection { background: var(--bloomdim); color: var(--ink); }
+  input { font-family: inherit; }
+
+  .thorn-underline {
+    clip-path: polygon(0% 0%, 100% 0%, 100% 60%, 92% 100%, 84% 60%, 76% 100%, 68% 60%, 60% 100%, 52% 60%, 44% 100%, 36% 60%, 28% 100%, 20% 60%, 12% 100%, 4% 60%, 0% 100%);
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes fadeOut { to { opacity: 0; transform: translateY(-6px); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes bump { 0% { transform: scale(1); } 30% { transform: scale(1.25); color: var(--spinebright); } 100% { transform: scale(1); } }
+
+  .fade-in { animation: fadeIn .15s ease-out; }
+  .pulse-dot { animation: pulse 1.6s ease-in-out infinite; }
+  .score-bump { animation: bump .4s ease-out; }
+
+  .container-lg { max-width: 1152px; margin: 0 auto; padding: 0 24px; }
+  .container-md { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+  .container-sm { max-width: 420px; margin: 0 auto; padding: 0 24px; }
+
+  /* ===== AUTH SCREEN ===== */
+  #view-auth { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
+  #view-auth.active { display: flex; }
+  .auth-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    width: 100%; max-width: 380px; padding: 32px;
+  }
+  .auth-logo { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; text-align: center; }
+  .auth-logo .accent { color: var(--bloom); }
+  .auth-sub { color: var(--inkdim); font-size: 0.8rem; text-align: center; margin: 0 0 24px; }
+  .auth-tabs { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+  .auth-tab {
+    flex: 1; padding: 10px; text-align: center; background: transparent; border: none;
+    color: var(--inkdim); font-family: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  }
+  .auth-tab.active { background: var(--bloomdim); color: var(--ink); }
+  .auth-field { margin-bottom: 14px; }
+  .auth-field label { display: block; font-size: 0.75rem; color: var(--inkdim); margin-bottom: 5px; }
+  .auth-field input {
+    width: 100%; padding: 10px 12px; background: var(--void); border: 1px solid var(--line);
+    border-radius: 6px; color: var(--ink); font-size: 0.9rem; outline: none;
+  }
+  .auth-field input:focus { border-color: var(--bloom); box-shadow: 0 0 0 1px var(--bloom); }
+  .auth-submit {
+    width: 100%; padding: 12px; margin-top: 6px; border: none; border-radius: 6px;
+    background: var(--bloom); color: var(--void); font-weight: 700; font-size: 1rem; cursor: pointer;
+  }
+  .auth-submit:disabled { opacity: 0.6; }
+  .auth-msg { margin-top: 14px; font-size: 0.8rem; font-family: var(--font-mono); text-align: center; display: none; }
+  .auth-msg.show { display: block; }
+  .auth-msg.ok { color: var(--spinebright); }
+  .auth-msg.err { color: var(--danger); }
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+
+  /* ===== HEADER ===== */
+  #view-app { display: none; }
+  #view-app.active { display: block; }
+  .site-header {
+    border-bottom: 1px solid var(--line); background: rgba(18, 22, 15, 0.75);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 20;
+    box-shadow: 0 1px 0 rgba(157,127,209,0.15);
+  }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; flex-wrap: wrap; gap: 10px; }
+  .logo-wrap { display: flex; align-items: baseline; gap: 12px; }
+  .logo { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.02em; }
+  .logo .accent { color: var(--bloom); }
+  .logo-underline { height: 8px; width: 80px; background: linear-gradient(to right, var(--bloom), var(--spine)); display: none; }
+  @media (min-width: 640px) { .logo-underline { display: block; } }
+
+  .nav-links { display: flex; align-items: center; gap: 18px; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.02em; flex-wrap: wrap; }
+  .nav-btn {
+    background: none; border: none; cursor: pointer; font-family: inherit; font-size: inherit; font-weight: inherit;
+    color: var(--inkdim); padding-bottom: 4px; border-bottom: 2px solid transparent;
+  }
+  .nav-btn.active { color: var(--bloom); border-bottom-color: var(--bloom); }
+  .nav-btn:hover { color: var(--ink); }
+  .nav-btn.active:hover { color: var(--bloom); }
+
+  .score-box { display: flex; align-items: center; gap: 8px; padding-left: 14px; border-left: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.75rem; }
+  .score-label { color: var(--inkdim); }
+  .score-value { color: var(--spinebright); font-weight: 700; font-size: 0.875rem; }
+  .user-chip { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--inkdim); }
+  .logout-btn {
+    background: none; border: 1px solid var(--line); border-radius: 4px; color: var(--inkdim);
+    font-family: var(--font-mono); font-size: 0.7rem; padding: 4px 8px; cursor: pointer;
+  }
+  .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .terminal-section { padding: 40px 24px 24px; }
+  .terminal-box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 20px; font-family: var(--font-mono); font-size: 0.875rem; }
+  .terminal-line-1 { color: var(--spine); margin: 0; }
+  .terminal-line-2 { color: var(--inkdim); margin: 4px 0 0; }
+  .terminal-line-2 .highlight { color: var(--bloom); }
+
+  .filter-bar { padding: 0 24px 16px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; font-family: var(--font-mono); }
+  .filter-btn {
+    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--inkdim);
+    cursor: pointer; font-family: inherit; font-size: inherit; transition: border-color .15s, color .15s;
+  }
+  .filter-btn:hover { border-color: var(--spine); color: var(--spine); }
+  .filter-btn.active { background: rgba(107, 84, 144, 0.3); border-color: var(--bloom); color: var(--bloom); }
+  .filter-btn.active:hover { border-color: var(--bloom); color: var(--bloom); }
+
+  .task-main { padding: 0 24px 64px; }
+  .task-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 640px) { .task-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1024px) { .task-grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .empty-state { display: none; color: var(--inkdim); font-family: var(--font-mono); font-size: 0.875rem; text-align: center; padding: 40px 0; }
+
+  .task-card {
+    background: linear-gradient(180deg, var(--panel), #10130D);
+    border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 10px;
+    overflow: hidden; transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s, border-color .2s;
+    display: flex; flex-direction: column;
+  }
+  .task-card.clickable { cursor: pointer; }
+  .task-card.clickable:hover { transform: translateY(-3px); }
+  .task-card.diff-easy { border-left-color: var(--spine); }
+  .task-card.diff-medium { border-left-color: var(--bloom); }
+  .task-card.diff-hard, .task-card.diff-insane { border-left-color: var(--danger); }
+  .task-card.diff-easy:hover { box-shadow: 0 12px 32px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(127,166,107,0.3), 0 0 28px -6px rgba(127,166,107,0.4); }
+  .task-card.diff-medium:hover { box-shadow: 0 12px 32px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(157,127,209,0.3), 0 0 28px -6px rgba(157,127,209,0.4); }
+  .task-card.diff-hard:hover, .task-card.diff-insane:hover { box-shadow: 0 12px 32px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(196,104,90,0.3), 0 0 28px -6px rgba(196,104,90,0.4); }
+  .task-card.locked { opacity: 0.55; }
+  .task-card.time-locked { opacity: 0.4; }
+
+  .task-card-banner {
+    height: 96px; position: relative; display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .task-card.diff-easy .task-card-banner { background: linear-gradient(135deg, rgba(127,166,107,0.28), rgba(127,166,107,0.06) 70%); }
+  .task-card.diff-medium .task-card-banner { background: linear-gradient(135deg, rgba(157,127,209,0.28), rgba(157,127,209,0.06) 70%); }
+  .task-card.diff-hard .task-card-banner, .task-card.diff-insane .task-card-banner { background: linear-gradient(135deg, rgba(196,104,90,0.28), rgba(196,104,90,0.06) 70%); }
+  .task-card-banner::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><path d='M0 30 L15 15 L30 30 L45 15 L60 30' stroke='white' stroke-width='0.5' fill='none' opacity='0.05'/></svg>");
+    background-size: 60px 60px;
+  }
+  .task-card-banner svg { width: 40px; height: 40px; position: relative; z-index: 1; opacity: 0.9; }
+  .task-card.diff-easy .task-card-banner svg { color: var(--spinebright); }
+  .task-card.diff-medium .task-card-banner svg { color: var(--bloom); }
+  .task-card.diff-hard .task-card-banner svg, .task-card.diff-insane .task-card-banner svg { color: var(--danger); }
+
+  .task-card-body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
+  .task-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .task-cat { font-size: 0.6875rem; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--inkdim); }
+  .task-solved { font-size: 0.6875rem; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--spinebright); }
+  .task-locked-msg { font-size: 0.6875rem; font-family: var(--font-mono); text-transform: uppercase; color: var(--danger); }
+  .task-timer-msg { font-size: 0.6875rem; font-family: var(--font-mono); text-transform: uppercase; color: var(--bloom); }
+  .task-title { font-size: 1.25rem; font-weight: 700; margin: 0 0 4px; }
+  .task-desc { color: var(--inkdim); font-size: 0.875rem; margin: 0 0 16px; flex: 1; }
+  .task-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+  .task-diff-badge { font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; background: var(--void); border: 1px solid var(--line); color: var(--inkdim); }
+  .task-points { font-family: var(--font-mono); font-weight: 700; }
+  .task-points.easy { color: var(--spinebright); }
+  .task-points.medium { color: var(--bloom); }
+  .task-points.hard, .task-points.insane { color: var(--danger); }
+
+  .leaderboard-main { padding: 40px 24px; }
+  .leaderboard-header { margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .leaderboard-header h1 { font-size: 1.875rem; font-weight: 700; margin: 0 0 4px; }
+  .live-indicator { color: var(--inkdim); font-family: var(--font-mono); font-size: 0.75rem; display: flex; align-items: center; gap: 8px; margin: 0; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--spinebright); display: inline-block; }
+
+  .podium-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 32px; }
+  @media (min-width: 640px) { .podium-grid { grid-template-columns: repeat(3, 1fr); } }
+  .podium-card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; text-align: center; padding: 20px; }
+  .podium-card.rank-1 { border-color: var(--bloom); padding: 24px; box-shadow: 0 0 36px -8px rgba(157,127,209,0.7); order: 1; }
+  .podium-card.rank-2 { border-color: var(--bloomdim); box-shadow: 0 0 28px -10px rgba(157,127,209,0.5); order: 2; }
+  .podium-card.rank-3 { border-color: var(--line); box-shadow: 0 0 24px -10px rgba(127,166,107,0.4); order: 3; }
+  .podium-card.you { box-shadow: 0 0 0 1px var(--spine), 0 0 24px -10px rgba(127,166,107,0.4); }
+  @media (min-width: 640px) {
+    .podium-grid { display: flex; align-items: flex-end; gap: 16px; }
+    .podium-card { flex: 1; }
+    .podium-card.rank-1 { transform: translateY(-12px); }
+  }
+  .podium-rank { font-family: var(--font-mono); font-size: 0.75rem; margin: 0 0 4px; color: var(--inkdim); }
+  .podium-card.rank-1 .podium-rank { color: var(--spinebright); }
+  .podium-name { font-weight: 700; margin: 0 0 4px; font-size: 1.125rem; }
+  .podium-card.rank-1 .podium-name { font-size: 1.25rem; }
+  .podium-score { font-family: var(--font-mono); font-weight: 700; font-size: 1.25rem; color: var(--bloom); margin: 0; }
+  .podium-card.rank-1 .podium-score { font-size: 1.5rem; }
+  .podium-card.rank-3 .podium-score { color: var(--spine); }
+
+  .leaderboard-table-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  thead tr { border-bottom: 1px solid var(--line); text-align: left; }
+  th { padding: 12px 20px; font-weight: 500; font-size: 0.6875rem; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--inkdim); }
+  th.right, td.right { text-align: right; }
+  tbody { font-family: var(--font-mono); }
+  tbody tr { border-bottom: 1px solid rgba(35,43,30,0.6); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--panel2); }
+  tbody tr.you { background: rgba(127,166,107,0.06); }
+  td { padding: 12px 20px; color: var(--inkdim); }
+  td.player { font-family: var(--font-display); font-weight: 600; color: var(--ink); }
+  td.score { font-weight: 700; color: var(--ink); }
+  tbody tr.you td.player, tbody tr.you td.score { color: var(--spinebright); }
+  td.rank { color: var(--inkdim); }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(10,12,10,0.8);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    z-index: 30; align-items: center; justify-content: center; padding: 0 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--panel); border: 1px solid rgba(157,127,209,0.4);
+    box-shadow: 0 0 0 1px rgba(157,127,209,0.25), 0 0 24px -8px rgba(157,127,209,0.45);
+    border-radius: 6px; width: 100%; max-width: 420px; padding: 24px; max-height: 88vh; overflow-y: auto;
+  }
+  .modal-box h3 { font-size: 1.25rem; font-weight: 700; margin: 0 0 4px; color: var(--spinebright); }
+  .modal-subtitle { color: var(--inkdim); font-size: 0.875rem; margin: 0 0 12px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; }
+  .modal-desc { color: var(--ink); font-size: 0.9375rem; line-height: 1.5; margin: 0 0 16px; }
+  .modal-attempts { font-size: 0.75rem; font-family: var(--font-mono); color: var(--danger); margin-bottom: 16px; display: inline-block; padding: 4px 8px; background: rgba(196,104,90,0.1); border-radius: 4px; border: 1px solid rgba(196,104,90,0.3); }
+  .modal-timer { font-size: 0.8rem; font-family: var(--font-mono); color: var(--bloom); margin-bottom: 16px; display: inline-block; padding: 4px 8px; background: rgba(157,127,209,0.1); border-radius: 4px; border: 1px solid rgba(157,127,209,0.3); }
+  .modal-timer.warn { color: var(--danger); border-color: rgba(196,104,90,0.4); background: rgba(196,104,90,0.1); }
+  .modal-start-box { background: var(--void); border: 1px dashed var(--line); border-radius: 6px; padding: 16px; text-align: center; margin-bottom: 16px; }
+  .modal-start-box p { color: var(--inkdim); font-size: 0.8rem; margin: 0 0 12px; }
+  .modal-input {
+    width: 100%; background: var(--void); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px;
+    font-family: var(--font-mono); font-size: 0.875rem; color: var(--ink); margin-bottom: 8px; outline: none;
+  }
+  .modal-input::placeholder { color: rgba(138,143,130,0.5); }
+  .modal-input:focus { border-color: var(--bloom); box-shadow: 0 0 0 1px var(--bloom); }
+  .modal-error { display: none; color: var(--danger); font-size: 0.75rem; font-family: var(--font-mono); margin: 0 0 12px; }
+  .modal-actions { display: flex; gap: 12px; }
+  .btn-primary {
+    flex: 1; background: linear-gradient(135deg, var(--bloom), var(--bloomdim));
+    color: var(--void); font-weight: 700; font-family: inherit; font-size: 1rem;
+    padding: 10px; border: none; border-radius: 6px; cursor: pointer;
+    transition: transform .15s, box-shadow .15s; box-shadow: 0 4px 14px -4px rgba(157,127,209,0.5);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -4px rgba(157,127,209,0.65); }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; transform: none; }
+  .btn-secondary {
+    padding: 10px 16px; border: 1px solid var(--line); border-radius: 4px; background: none; color: var(--inkdim);
+    font-family: inherit; font-size: 1rem; cursor: pointer; transition: color .15s;
+  }
+  .btn-secondary:hover { color: var(--ink); }
+
+  #toast {
+    display: none; position: fixed; bottom: 24px; right: 24px; left: 24px; z-index: 40;
+    font-family: var(--font-mono); font-size: 0.85rem; padding: 12px 16px;
+    border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--inkdim);
+  }
+  @media (min-width: 500px) { #toast { left: auto; max-width: 340px; } }
+  #toast.show { display: block; animation: slideIn .2s ease-out, fadeOut .3s ease-in 2.2s forwards; }
+  #toast.ok { border-color: var(--spine); color: var(--spinebright); }
+  #toast.err { border-color: var(--danger); color: var(--danger); }
+
+  #loading-screen {
+    position: fixed; inset: 0; background: var(--void); z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); color: var(--inkdim); font-size: 0.9rem;
+  }
+  #loading-screen.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">načítám ThistleSec…</div>
+
+<!-- ============================= AUTH VIEW ============================= -->
+<div id="view-auth">
+  <div class="auth-card">
+    <div class="auth-logo">Thistle<span class="accent">Sec</span></div>
+    <p class="auth-sub">přihlas se nebo si založ účet, ať se ti uloží postup</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Přihlásit</button>
+      <button class="auth-tab" data-tab="register">Registrovat</button>
+    </div>
+
+    <form id="login-form" class="auth-form active">
+      <div class="auth-field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" required autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label for="login-password">Heslo</label>
+        <input type="password" id="login-password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="auth-submit" id="login-submit">Přihlásit se</button>
+    </form>
+
+    <form id="register-form" class="auth-form">
+      <div class="auth-field">
+        <label for="register-username">Přezdívka (uvidí ji ostatní v žebříčku)</label>
+        <input type="text" id="register-username" required minlength="3" maxlength="24">
+      </div>
+      <div class="auth-field">
+        <label for="register-email">Email</label>
+        <input type="email" id="register-email" required autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label for="register-password">Heslo</label>
+        <input type="password" id="register-password" required minlength="6" autocomplete="new-password">
+      </div>
+      <button type="submit" class="auth-submit" id="register-submit">Vytvořit účet</button>
+    </form>
+
+    <p id="auth-msg" class="auth-msg"></p>
+  </div>
+</div>
+
+<!-- ============================= APP VIEW ============================= -->
+<div id="view-app">
+
+  <header class="site-header">
+    <div class="header-inner container-lg" style="padding-left:0; padding-right:0;">
+      <div class="logo-wrap">
+        <span class="logo">Thistle<span class="accent">Sec</span></span>
+        <div class="logo-underline thorn-underline"></div>
+      </div>
+      <nav class="nav-links">
+        <button data-view="dashboard" class="nav-btn active">Úlohy</button>
+        <button data-view="leaderboard" class="nav-btn">Žebříček</button>
+        <div class="score-box">
+          <span class="score-label">skóre</span>
+          <span id="score-display" class="score-value">0</span>
+        </div>
+        <div class="user-chip">
+          <span id="username-display">–</span>
+          <button class="logout-btn" id="logout-btn">Odhlásit</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div id="view-dashboard" class="view active">
+    <section class="terminal-section container-lg" style="padding-left:0; padding-right:0;">
+      <div class="terminal-box">
+        <p class="terminal-line-1">visitor@thistlesec:~$ <span style="color:var(--ink)">whoami</span></p>
+        <p class="terminal-line-2">hráč připojen — vyber si úlohu, spusť časovač a odešli flag ve formátu <span class="highlight">thistle&#123;...&#125;</span></p>
+      </div>
+    </section>
+
+    <section class="filter-bar container-lg" id="filter-bar" style="padding-left:0; padding-right:0;"></section>
+
+    <main class="task-main container-lg" style="padding-left:0; padding-right:0;">
+      <div class="task-grid" id="task-grid"></div>
+      <p id="empty-state" class="empty-state">V této kategorii zatím nic není.</p>
+    </main>
+  </div>
+
+  <div id="view-leaderboard" class="view">
+    <main class="leaderboard-main container-md" style="padding-left:0; padding-right:0;">
+      <div class="leaderboard-header">
+        <div>
+          <h1>Žebříček hráčů</h1>
+          <p class="live-indicator"><span class="dot pulse-dot"></span> živě · sdíleno mezi všemi hráči přes Supabase</p>
+        </div>
+      </div>
+      <div id="top3" class="podium-grid"></div>
+      <div class="leaderboard-table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Hráč</th><th class="right">Vyřešeno</th><th class="right">Skóre</th></tr>
+          </thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div id="flag-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h3 id="modal-title">Název Úlohy</h3>
+      <p id="modal-subtitle" class="modal-subtitle">Kategorie</p>
+      <p id="modal-desc" class="modal-desc"></p>
+
+      <div id="modal-start-box" class="modal-start-box">
+        <p id="modal-start-text">Časový limit této úlohy: <strong id="modal-limit-text"></strong>. Soubor/odkaz se odemkne až po spuštění časovače — pak už poběží, i když zavřeš okno.</p>
+        <button id="modal-start-btn" class="btn-primary">▶ Spustit časovač</button>
+      </div>
+
+      <div id="modal-attachment"></div>
+      <div id="modal-timer-row" style="display:flex; align-items:center; gap:10px; flex-wrap: wrap;">
+        <p id="modal-timer" class="modal-timer" style="display:none;"></p>
+        <button id="modal-stop-btn" class="btn-secondary" style="display:none; padding: 4px 10px; font-size: 0.75rem; font-family: var(--font-mono); margin-bottom: 16px;">⏸ Pozastavit</button>
+        <button id="modal-resume-btn" class="btn-primary" style="display:none; padding: 6px 14px; font-size: 0.85rem; margin-bottom: 16px; flex: none;">▶ Pokračovat</button>
+      </div>
+      <p id="modal-attempts" class="modal-attempts" style="display:none;"></p>
+
+      <input id="flag-input" type="text" placeholder="thistle{...}" class="modal-input">
+      <p id="modal-error" class="modal-error"></p>
+      <div class="modal-actions">
+        <button id="modal-submit" class="btn-primary">Odeslat Flag</button>
+        <button id="modal-cancel" class="btn-secondary">Zrušit</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+/* ==========================================================================
+ * SUPABASE KONFIGURACE — anon klíč je veřejný a bezpečný do klienta,
+ * ochranu dat zajišťuje Row Level Security nastavená v backend/supabase/schema.sql
+ * ========================================================================== */
+const SUPABASE_URL = "https://xfwcfisqgoeazolqwbnh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhmd2NmaXNxZ29lYXpvbHF3Ym5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4MzI2ODYsImV4cCI6MjEwMTQwODY4Nn0.G3ei_Anpmk2JvtfiW3mZW47PJ-oR_Thk_FPDsG-4YmQ";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Časové limity v minutách podle obtížnosti.
+const CASOVY_LIMIT_MIN = { EASY: 90, MEDIUM: 150, HARD: 240, INSANE: 300 };
+
+/*
+ * POZOR na bezpečnostní limit: ověřování flagů běží v tomto JS (klient),
+ * takže technicky zdatný hráč by teoreticky mohl zapsat "vyřešeno" i bez
+ * správné odpovědi přímo přes konzoli. Pro CTF mezi kamarády je to
+ * přijatelné riziko — víc viz komentář v backend/supabase/schema.sql.
+ */
+
+const state = {
+  tasks: [
+    { id: 1, nazev: "Trní v cookies", kategorie: "WEB", obtiznost: "EASY", aktualniBody: 100,
+      popis: "Základní webová analytika naznačuje, že session token nikdy nespí a zůstává aktivní příliš dlouho. Prozkoumej HTTP hlavičky a najdi únik v autentizačním mechanismu.",
+      priloha: "<a href='cookie-portal.html' target='_blank' style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 🔗 OTEVŘÍT interní portál ]</a>",
+      _ocekavanyFlag: "thistle{c00k13_wilt}" },
+    { id: 2, nazev: "Purpurová šifra", kategorie: "CRYPTO", obtiznost: "MEDIUM", aktualniBody: 350,
+      popis: "Útočník použil klasický XOR, který se na první pohled zdá neprůstřelný. Získali jsme ale kousek původního plaintextu. Zkus zjistit klíč a dešifruj zbytek zprávy.",
+      priloha: "<a href='message.enc.txt' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT message.enc.txt ]</a>",
+      _ocekavanyFlag: "thistle{xor_1s_n0t_3n0ugh}" },
+    { id: 3, nazev: "Zlomený stonek", kategorie: "PWN", obtiznost: "HARD", aktualniBody: 720,
+      popis: "Našli jsme starou C binárku z produkčního serveru, která je stále dostupná přes netcat. Tady je její zdrojový kód. Analyzuj ho a najdi způsob, jak přepsat návratovou adresu a vytočit si shell.",
+      priloha: "<a href='vuln.c' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT vuln.c ]</a>",
+      _ocekavanyFlag: "thistle{st4ck_sm4sh3d}" },
+    { id: 4, nazev: "Skenování listu", kategorie: "FORENSICS", obtiznost: "EASY", aktualniBody: 150,
+      popis: "Zajistili jsme podivný .jpg obrázek ze sociálních sítí. Vizuálně se na něm nic neděje, ale nástroje pro analýzu souborů hlásí anomálie. V datech obrázku se zřejmě něco skrývá.",
+      priloha: "<a href='list.jpg' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT list.jpg ]</a>",
+      _ocekavanyFlag: "thistle{ex1f_d4t4}" },
+    { id: 5, nazev: "Ztracený Admin", kategorie: "OSINT", obtiznost: "MEDIUM", aktualniBody: 300,
+      popis: "Admin ThistleSecu přestal komunikovat z dovolené. Zůstala po něm jen tato fotka. Z metadat jsme nic nevytáhli, takže musíš zapojit vizuální dedukci a satelitní snímky. Zjisti přesné GPS souřadnice místa (na 3 des. místa). Formát flagu: thistle{sirka_delka}",
+      priloha: "<a href='admin_photo.jpg' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT admin_photo.jpg ]</a>",
+      _ocekavanyFlag: "thistle{43.557_15.953}" },
+    { id: 6, nazev: "Ztracený track", kategorie: "STEGO", obtiznost: "EASY", aktualniBody: 150,
+      popis: "Na net unikl nevydaný rapový track (beat.wav). Zní to jako úplně normální audio, ale producent prý přímo do bajtů souboru schoval vzkaz pro svůj label. Potřebuješ ten zvuk otevřít přes nějaký Hex Editor nebo přes terminálový příkaz strings.",
+      priloha: "<a href='beat.wav' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT beat.wav ]</a>",
+      _ocekavanyFlag: "thistle{sp3ctr0gr4m_sh33n_v1b3s}" },
+    { id: 7, nazev: "Falešný maratonec", kategorie: "WEB", obtiznost: "MEDIUM", aktualniBody: 300,
+      popis: "Cíl se chlubí extrémním srpnovým během a lognul si to přes nezabezpečené API. Získali jsme strukturu jeho POST requestu. Zkus manipulovat s JSON daty a pošli do systému hodnotu spálených kalorií vyšší než 10000. Cílový Endpoint: /api/fitness/log",
+      priloha: null,
+      _ocekavanyFlag: "thistle{k4l0r1ck3_0v3rfl0w}" },
+    { id: 8, nazev: "Klubová šifra", kategorie: "CRYPTO", obtiznost: "EASY", aktualniBody: 200,
+      popis: "Zachytili jsme Vigenèrovu šifru: 'Lzaokz{n1n3n3d3_s3c_k0w3m}'. Náš agent říkal, že klíčem k dešifrování je jméno velmi známého pražského hudebního klubu, kde nedávno hrál Fakeminek. Zkus to rozlousknout.",
+      priloha: null,
+      _ocekavanyFlag: "thistle{v1g3n3r3_s3c_p0w3r}" },
+    { id: 9, nazev: "Abnormal Geometry", kategorie: "REVERSE", obtiznost: "HARD", aktualniBody: 400,
+      popis: "Podařilo se nám vytáhnout herní data z komunitního demon levelu 'Abnormal'. Autor ale do XML struktury mapy schoval tajný trigger, který se při běžném průchodu nikdy neaktivuje. Dokážeš dekompilovat save soubor a přečíst si skrytou hodnotu v textovém objektu?",
+      priloha: "<a href='abnormal_save.xml' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT abnormal_save.xml ]</a>",
+      _ocekavanyFlag: "thistle{h1dd3n_tr1gg3r_byp4ss}" },
+    { id: 10, nazev: "Opičí byznys", kategorie: "REVERSE", obtiznost: "HARD", aktualniBody: 500,
+      popis: "Máme tu memory dump z tower defense hry (bloons_dump.txt) přesně ze 100. kola. Hráč měl na účtě přesně 1337 peněz. Najdi v hex editoru adresu s touto hodnotou a kousek od ní se válí náš flag.",
+      priloha: "<a href='bloons_dump.txt' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT bloons_dump.txt ]</a>",
+      _ocekavanyFlag: "thistle{m3m0ry_p0k3_btd}" },
+    { id: 11, nazev: "VIP SaSaZu", kategorie: "WEB", obtiznost: "MEDIUM", aktualniBody: 300,
+      popis: "Fakeminek má dnes večer beznadějně vyprodanou show v SaSaZu. Našli jsme zapomenutý záložní API endpoint rezervačního systému klubu. Zkus přes Burp Suite nebo lokální DevTools zmanipulovat POST požadavek a změnit parametr 'ticket_type=standard' tak, aby ti systém vygeneroval backstage VIP pass.",
+      priloha: "<a href='sasazu-booking.html' target='_blank' style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 🔗 OTEVŘÍT rezervační systém ]</a>",
+      _ocekavanyFlag: "thistle{b4ckst4g3_p4ss_gr4nt3d}" },
+    { id: 12, nazev: "Tajemství INFISu", kategorie: "NETWORK", obtiznost: "EASY", aktualniBody: 150,
+      popis: "Školní síť na SŠINFIS zaznamenala podivný provoz. Získali jsme logy z hlavního routeru přiděleného pro třídu 2.F. Jeden ze studentů si zřejmě posílal heslo k interní administraci do plaintext poznámky, která prošla přes nezabezpečený port. Analyzuj textovou strukturu logu a vytáhni flag.",
+      priloha: "<a href='infis_router.txt' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT infis_router.log.txt ]</a>",
+      _ocekavanyFlag: "thistle{1nf1s_n3tw0rk_c0mpr0m1s3d}" },
+    { id: 13, nazev: "Ztracené Webstudio", kategorie: "WEB", obtiznost: "EASY", aktualniBody: 150,
+      popis: "Na staré subdoméně freelance projektu 'Webstudio Bodlák' zůstal po migraci na nový server ležet odhalený adresář. Proskenuj cesty a zjisti, jestli tam nezůstal veřejně dostupný záložní soubor nebo skrytý repozitář.",
+      priloha: "<a href='webstudio-leak-site/' target='_blank' style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 🔗 OTEVŘÍT starou subdoménu ]</a>",
+      _ocekavanyFlag: "thistle{g1t_3xp0s3d_b0dl4k}" },
+    { id: 14, nazev: "Jonášův Server", kategorie: "NETWORK", obtiznost: "MEDIUM", aktualniBody: 350,
+      popis: "Cíl si s kamarádem založil modovaný Minecraft server přes Essential mod. V PCAP souboru z Wiresharku jsme zachytili jejich komunikaci při loginu. Zjisti, jaké OP heslo si Jonáš poslal do chatu.",
+      priloha: "<a href='jonas_capture.pcap' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT jonas_capture.pcap ]</a>",
+      _ocekavanyFlag: "thistle{m1n3cr4ft_3ss3nt14l_pcap}" },
+    { id: 15, nazev: "Kalorický Deficit", kategorie: "WEB", obtiznost: "HARD", aktualniBody: 600,
+      popis: "Cíl si loguje jídlo přes vlastní fitness aplikaci. Zjistili jsme, že API pro sledování maker je náchylné na Insecure Direct Object Reference (IDOR). Dostaň se k záznamu administrátora (ID 0) a najdi flag skrytý v jeho včerejší večeři.",
+      priloha: "<a href='kalorie-idor.html' target='_blank' style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 🔗 OTEVŘÍT FitTrack ]</a>",
+      _ocekavanyFlag: "thistle{1d0r_c4l0r13s_m4cr0s}" },
+    { id: 16, nazev: "Podezřelý Fabric", kategorie: "REVERSE", obtiznost: "HARD", aktualniBody: 650,
+      popis: "Mezi mody na CurseForge se objevil jeden, který údajně optimalizuje FPS, ale chová se jako malware. Rozbal tenhle .jar soubor (Fabric mod) a najdi hardcodovaný C2 server i tajný klíč v jeho konfiguraci.",
+      priloha: "<a href='fpsboost-mod.jar' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT fpsboost-mod.jar ]</a>",
+      _ocekavanyFlag: "thistle{j4v4_d3c0mp1l3_m4lw4r3}" },
+    { id: 17, nazev: "Suno AI Drops", kategorie: "STEGO", obtiznost: "EASY", aktualniBody: 200,
+      popis: "Tenhle rapový track byl vygenerovaný přes Suno AI, ale v jeho ID3 tagech je skrytá tajná zpráva od underground scény. Zkus se podívat na metadata souboru (např. přes 'exiftool' nebo vlastnosti souboru).",
+      priloha: "<a href='suno_drop.mp3' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT suno_drop.mp3 ]</a>",
+      _ocekavanyFlag: "thistle{s1n0_41_m3t4d4t4}" },
+    { id: 18, nazev: "Ghidra Master", kategorie: "REVERSE", obtiznost: "MEDIUM", aktualniBody: 400,
+      popis: "Máme tu malou zkompilovanou Linux binárku (x86-64, staticky nelinkovaná ke zdroji). Otevři ji v Ghidře nebo IDA, analyzuj funkci main() a zjisti, s jakým stringem se porovnává tvůj input.",
+      priloha: "<a href='ghidra_master' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT ghidra_master (ELF) ]</a>",
+      _ocekavanyFlag: "thistle{gh1dr4_str1ng_c0mp4r3}" },
+    { id: 19, nazev: "Spring Boot Leak", kategorie: "WEB", obtiznost: "MEDIUM", aktualniBody: 350,
+      popis: "Aplikace běžící na Spring Boot frameworku má špatně nakonfigurované zabezpečení. Najdi odhalený Actuator endpoint a vytáhni z něj systémové proměnné (env).",
+      priloha: "<a href='spring-actuator-leak.html' target='_blank' style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 🔗 OTEVŘÍT /actuator/env ]</a>",
+      _ocekavanyFlag: "thistle{spr1ng_b00t_4ctu4t0r_3nv}" },
+    { id: 20, nazev: "Scratch the Night", kategorie: "REVERSE", obtiznost: "INSANE", aktualniBody: 1000,
+      popis: "Analyzuj tuhle mobilní appku ('Scratch the Night'). Vývojář nechal hardcodovaný master klíč přímo v nativní knihovně libapp.so. Rozbal archiv a projeď binárku přes 'strings' nebo v Ghidře. <br><br><span style='color: var(--inkdim); font-size: 0.78em;'>ℹ️ Poznámka: jde o zjednodušenou náhradu skutečné Flutter appky (bez reálného Android build toolchainu) — mechanika (najít string v nativní knihovně) je ale stejná.</span>",
+      priloha: "<a href='scratch_the_night.apk' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT scratch_the_night.apk ]</a>",
+      _ocekavanyFlag: "thistle{flutt3r_d4rt_r3v3rs3}" },
+    { id: 21, nazev: "Cisco Tracer", kategorie: "NETWORK", obtiznost: "EASY", aktualniBody: 200,
+      popis: "Dostali jsme starší config ze školní sítě v Cisco Packet Traceru. Hlavní router má zaheslovaný privilegovaný režim pomocí slabého 'type 7' hashe: enable password 7 15060305173e2721333064311057291718460a67046b0d114c155245 — prolom ho (algoritmus je veřejně zdokumentovaný, googli 'cisco type 7 password decoder').",
+      priloha: null,
+      _ocekavanyFlag: "thistle{c1sc0_typ3_7_cr4ck}" },
+    { id: 22, nazev: "Pilsner Dragons", kategorie: "OSINT", obtiznost: "MEDIUM", aktualniBody: 300,
+      popis: "V archivu lokálního zpravodaje jsme našli útržek článku o závodech dračích lodí: 'Pilsner Dragons Cup 2026 proběhl přesně 10. den po plzeňském Svátku sportu, který každoročně padá na poslední pátek v květnu. Fanoušky překvapilo, že akce byla výjimečně v pondělí místo tradičního víkendu — organizátoři posunuli termín kvůli rekonstrukci nábřeží.' Spočítej přesné datum akce (formát flagu: thistle&#123;DD-MM-YYYY&#125;, rok 2026).",
+      priloha: null,
+      _ocekavanyFlag: "thistle{08-06-2026}" },
+    { id: 23, nazev: "Viktorův Flow", kategorie: "CRYPTO", obtiznost: "EASY", aktualniBody: 150,
+  popis: "Klasická textovka. Šifra se skrývá v prvních písmenech každého verše. Stáhni si přiložený text a přečti si ho vertikálně. To ti dá klíč k formátu flagu (thistle{...}).",
+  priloha: "<a href='viktor_flow.txt' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT viktor_flow.txt ]</a>",
+  _ocekavanyFlag: "thistle{v3rt1c4l_lyr1cs}" },
+    { id: 24, nazev: "Haxagon Log", kategorie: "FORENSICS", obtiznost: "MEDIUM", aktualniBody: 400,
+      popis: "Tohle je záloha access.log z Haxagon CTF platformy. Někdo se pokusil o brutální SQL injection. Najdi v logu přesný payload, kterým útočník prolomil přihlášení a dumpnul tabulky.",
+      priloha: "<a href='haxagon_access.txt' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT haxagon_access.txt ]</a>",
+      _ocekavanyFlag: "thistle{un10n_s3l3ct_p4yl04d}" },
+    { id: 25, nazev: "Tailwind Triky", kategorie: "WEB", obtiznost: "EASY", aktualniBody: 100,
+      popis: "Na frontendu webové aplikace někdo skryl flag pomocí CSS tříd 'invisible opacity-0 absolute'. Prozkoumej zdrojový kód stránky přes DevTools a najdi DOM element, který se normálně neukazuje.",
+      priloha: "<a href='merch-hidden-dom.html' target='_blank' style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 🔗 OTEVŘÍT ThistleSec Merch ]</a>",
+      _ocekavanyFlag: "thistle{t41lw1nd_c55_1nsp3ct}" },
+    { id: 26, nazev: "Klatovský Kurýr", kategorie: "OSINT", obtiznost: "HARD", aktualniBody: 500,
+      popis: "Na rozmazané fotce lístku je vidět jen fragment otisku razítka průvodčího z okamžiku odjezdu: '1_:4_' (první číslice hodiny je 1, první číslice minuty je 4). Tady je výpis odpoledních osobních vlaků z Plzně do Klatov: Os 7538 (odjezd 11:15), Os 7540 (odjezd 13:02), Os 7542 (odjezd 14:47), Os 7544 (odjezd 16:58). Zjisti, který jediný spoj odpovídá fragmentu razítka (formát flagu: thistle&#123;os_XXXX_kl4t0vy&#125;).",
+      priloha: null,
+      _ocekavanyFlag: "thistle{0s_7542_kl4t0vy}" },
+    { id: 27, nazev: "Krvavý Steak", kategorie: "MISC", obtiznost: "EASY", aktualniBody: 150,
+  popis: "Na blogu o vaření jsme našli zakódovaný recept. Píšou tam o pan-seared steaku a basmati rýži, ale gramáž ingrediencí vypadá hodně podivně. Že by to byl Base64? Stáhni si přiložený recept a dekóduj ho.",
+  priloha: "<a href='recept_steak.txt' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT recept_steak.txt ]</a>",
+  _ocekavanyFlag: "thistle{b4s364_c00k1ng_r3c1p3}" },
+    { id: 28, nazev: "Srpnový Půlmaraton", kategorie: "MISC", obtiznost: "MEDIUM", aktualniBody: 350,
+      popis: "Cíl sdílel svůj tréninkový plán na půlmaraton, včetně GPX záznamu z posledního dlouhého běhu. Otevři .gpx data v mapovém editoru (nebo si prohlédni souřadnice přímo v XML) a zjisti, na jakých přesných GPS souřadnicích trénink skončil. Formát flagu: thistle{gpx_tr4ck1ng_m4p} — ale nejdřív si to sám ověř v souboru.",
+      priloha: "<a href='halfmarathon.gpx' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT halfmarathon.gpx ]</a>",
+      _ocekavanyFlag: "thistle{gpx_tr4ck1ng_m4p}" },
+    { id: 29, nazev: "IT Master", kategorie: "OSINT", obtiznost: "EASY", aktualniBody: 200,
+      popis: "Archivovaný příspěvek z fóra fiktivního Národního institutu digitálních dovedností (NIDD): 'Proč je pokročilá varianta národního testování digitální kompetence, co se koná vždy v první polovině května, tak zbytečně těžší než ten základní duben? Oficiálně se to prý jmenuje úplně jinak než ten základní test, i když je to od stejné instituce.' Základní test se oficiálně jmenuje 'IT Základ'. Podle stejného vzoru pojmenování ('IT ' + anglické slovo popisující pokročilou/mistrovskou úroveň) zjisti oficiální název toho pokročilého testu a zapiš ho leetspeakem do formátu thistle&#123;...&#125;.",
+      priloha: null,
+      _ocekavanyFlag: "thistle{1t_m4st3r_t3st}" },
+    { id: 30, nazev: "Rootnutí 2.F", kategorie: "PWN", obtiznost: "INSANE", aktualniBody: 1500,
+      popis: "Finální boss. Simulace lokálního serveru třídy 2.F. Připoj se přes netcat na server (adresu ti dá admin) a získej root shell zneužitím špatně nakonfigurované SUID binárky, která běžně slouží ke kontrole přítomnosti v hodině. <br><br><span style='color: var(--danger); font-size: 0.8em;'>⚠️ POZNÁMKA AUTORA: tahle úloha běží jako skutečný server (Docker), ne jako soubor ke stažení — musí být nejdřív nasazená (viz Docker balíček), jinak není hráčům dostupná.</span>",
+      priloha: null,
+      _ocekavanyFlag: "thistle{r00t_sh3ll_2f_m4st3r}" },
+    { id: 31, nazev: "Rozbitý Parser", kategorie: "PROGRAMOVANI", obtiznost: "MEDIUM", aktualniBody: 300,
+      popis: "Interní validační skript, který se omylem dostal do produkce. Přečti si kód, pochop transformaci a zjisti, jaký vstup projde kontrolou — ten vstup JE flag.",
+      priloha: "<a href='parser_check.py' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT parser_check.py ]</a>",
+      _ocekavanyFlag: "thistle{c0d3_r3v3rs3_p4rs3r}" },
+    { id: 32, nazev: "Bodlák Encoding", kategorie: "PROGRAMOVANI", obtiznost: "MEDIUM", aktualniBody: 300,
+      popis: "Interní nástroj kóduje zprávy vlastní zpřeházenou variantou Base64. Napiš si (v čemkoliv) překladovou tabulku a zprávu dekóduj.",
+      priloha: "<a href='bodlak_encoding_notes.md' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT bodlak_encoding_notes.md ]</a>",
+      _ocekavanyFlag: "thistle{b0dl4k_cust0m_3nc0d1ng}" },
+    { id: 33, nazev: "Obfuskovaný Build", kategorie: "PROGRAMOVANI", obtiznost: "HARD", aktualniBody: 450,
+      popis: "Tenhle JS soubor se omylem dostal do produkčního bundlu. Zjisti, co vypíše — staticky (přečtením kódu) nebo ho spusť v Node.js / konzoli prohlížeče.",
+      priloha: "<a href='build_obfuscated.js' download style='color: var(--bloom); font-weight: bold; text-decoration: underline;'>[ 💾 STÁHNOUT build_obfuscated.js ]</a>",
+      _ocekavanyFlag: "thistle{j5_0bfusc4t10n_pwn3d}" }
+  ],
+  progress: {},
+  aktivniFiltr: "VSE",
+  aktivniObtiznost: "VSE",
+  aktivniUlohaId: null,
+  session: null,
+  username: null,
+};
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function ukazToast(text, typ) {
+  const toast = document.getElementById("toast");
+  toast.className = "show" + (typ ? " " + typ : "");
+  toast.textContent = text;
+  setTimeout(() => toast.className = "", 2600);
+}
+
+/* ===================== AUTH ===================== */
+
+document.querySelectorAll(".auth-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".auth-tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".auth-form").forEach(f => f.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.tab + "-form").classList.add("active");
+    hideAuthMsg();
+  });
+});
+
+function showAuthMsg(text, typ) {
+  const el = document.getElementById("auth-msg");
+  el.textContent = text;
+  el.className = "auth-msg show " + typ;
+}
+function hideAuthMsg() {
+  document.getElementById("auth-msg").className = "auth-msg";
+}
+
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("login-submit");
+  btn.disabled = true; btn.textContent = "Přihlašuji…";
+  hideAuthMsg();
+
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  btn.disabled = false; btn.textContent = "Přihlásit se";
+
+  if (error) {
+    showAuthMsg(prelozChybu(error.message), "err");
+    return;
+  }
+  await naStartApp(data.session);
+});
+
+document.getElementById("register-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("register-submit");
+  btn.disabled = true; btn.textContent = "Vytvářím účet…";
+  hideAuthMsg();
+
+  const username = document.getElementById("register-username").value.trim();
+  const email = document.getElementById("register-email").value.trim();
+  const password = document.getElementById("register-password").value;
+
+  // Přezdívku ukládáme jen jako metadata k účtu — samotný řádek v "profiles"
+  // (chráněný RLS) se založí až při prvním přihlášení, kdy už existuje
+  // platná session a auth.uid() sedí. Dokud email není potvrzený, žádná
+  // session není, takže dřívější pokus o insert do "profiles" vždy spadne.
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { username } }
+  });
+
+  btn.disabled = false; btn.textContent = "Vytvořit účet";
+
+  if (error) {
+    showAuthMsg(prelozChybu(error.message), "err");
+    return;
+  }
+
+  if (data.session) {
+    // Potvrzení emailu je vypnuté → rovnou přihlášen, profil se založí v naStartApp.
+    await naStartApp(data.session);
+  } else {
+    showAuthMsg("Účet vytvořen! Zkontroluj email a potvrď registraci kliknutím na odkaz, pak se přihlas.", "ok");
+    document.querySelector('.auth-tab[data-tab="login"]').click();
+  }
+});
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+  await sb.auth.signOut();
+  location.reload();
+});
+
+function prelozChybu(msg) {
+  if (msg.includes("Invalid login credentials")) return "Špatný email nebo heslo.";
+  if (msg.includes("already registered")) return "Tenhle email už je zaregistrovaný.";
+  if (msg.includes("Email not confirmed")) return "Email ještě není potvrzený — zkontroluj schránku.";
+  return msg;
+}
+
+/* ===================== START APLIKACE PO PŘIHLÁŠENÍ ===================== */
+
+async function naStartApp(session) {
+  state.session = session;
+
+  let { data: profil } = await sb.from("profiles").select("username").eq("id", session.user.id).single();
+
+  // První přihlášení po potvrzení emailu — profil ještě neexistuje, založíme ho
+  // teď, kdy už máme platnou session (auth.uid() konečně sedí s RLS politikou).
+  if (!profil) {
+    const username = (session.user.user_metadata && session.user.user_metadata.username)
+      || session.user.email.split("@")[0];
+    const { data: novyProfil, error: profileError } = await sb.from("profiles")
+      .insert({ id: session.user.id, username })
+      .select("username").single();
+
+    if (profileError) {
+      ukazToast("Nepodařilo se založit profil: " + profileError.message, "err");
+    } else {
+      profil = novyProfil;
+    }
+  }
+
+  state.username = profil ? profil.username : session.user.email;
+
+  document.getElementById("username-display").textContent = state.username;
+  document.getElementById("view-auth").classList.remove("active");
+  document.getElementById("view-app").classList.add("active");
+
+  await nactiPostup();
+  vykresliFiltry();
+  vykresliUlohy();
+  aktualizujSkoreVNavu();
+
+  setInterval(tikTak, 1000);
+}
+
+async function nactiPostup() {
+  const { data, error } = await sb
+    .from("task_progress")
+    .select("*")
+    .eq("user_id", state.session.user.id);
+
+  if (error) {
+    ukazToast("Nepodařilo se načíst postup ze serveru.", "err");
+    return;
+  }
+
+  state.progress = {};
+  (data || []).forEach(radek => {
+    state.progress[radek.task_id] = radek;
+  });
+}
+
+/* ===================== NAVIGACE MEZI ZÁLOŽKAMI ===================== */
+
+document.querySelectorAll(".nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => prepniView(btn.dataset.view));
+});
+
+function prepniView(nazev) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById(`view-${nazev}`).classList.add("active");
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === nazev));
+  if (nazev === "leaderboard") vykresliLeaderboard();
+}
+
+/* ===================== VYKRESLENÍ ÚLOH ===================== */
+
+const DIFF_CLASS = { EASY: "easy", MEDIUM: "medium", HARD: "hard", INSANE: "insane" };
+
+// Jednoduché lineární SVG ikony pro každou kategorii — barva se dědí přes currentColor.
+const CATEGORY_ICON_SVG = {
+  WEB: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="9" width="36" height="30" rx="3"/><path d="M6 17h36"/><circle cx="11" cy="13" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.2" fill="currentColor" stroke="none"/><path d="M16 28l-4 4 4 4M32 28l4 4-4 4M26 26l-4 12"/></svg>`,
+  CRYPTO: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="24" r="10"/><circle cx="18" cy="24" r="4"/><path d="M27 24h15M36 24v6M41 24v6"/></svg>`,
+  PWN: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M24 6l16 8v10c0 10-7 16-16 18-9-2-16-8-16-18V14z"/><path d="M18 24l4 4 8-8"/></svg>`,
+  FORENSICS: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="20" cy="20" r="12"/><path d="M29 29l11 11M14 20h12M20 14v12"/></svg>`,
+  OSINT: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M24 6c-7 0-12 5-12 12 0 9 12 24 12 24s12-15 12-24c0-7-5-12-12-12z"/><circle cx="24" cy="18" r="4"/></svg>`,
+  STEGO: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 24h4M14 16v16M22 10v28M30 18v12M38 22v4"/></svg>`,
+  REVERSE: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="20" cy="20" r="6"/><path d="M20 10v4M20 26v4M10 20h4M26 20h4M13 13l3 3M27 27l-3-3M13 27l3-3M27 13l-3 3"/><circle cx="33" cy="33" r="4"/></svg>`,
+  NETWORK: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="12" r="4"/><circle cx="38" cy="12" r="4"/><circle cx="24" cy="36" r="4"/><path d="M13 14l9 18M35 14l-9 18M14 12h20"/></svg>`,
+  PROGRAMOVANI: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14L6 24l10 10M32 14l10 10-10 10M27 10l-6 28"/></svg>`,
+};
+function ikonaKategorie(kat) {
+  return CATEGORY_ICON_SVG[kat] || CATEGORY_ICON_SVG.WEB;
+}
+
+function vykresliFiltry() {
+  const bar = document.getElementById("filter-bar");
+  bar.innerHTML = "";
+  const kategorie = ["VSE", ...new Set(state.tasks.map(u => u.kategorie))];
+  kategorie.forEach(kat => {
+    const btn = document.createElement("button");
+    btn.textContent = kat === "VSE" ? "VŠE" : kat;
+    btn.className = "filter-btn" + (kat === state.aktivniFiltr ? " active" : "");
+    btn.addEventListener("click", () => { state.aktivniFiltr = kat; vykresliFiltry(); vykresliUlohy(); });
+    bar.appendChild(btn);
+  });
+
+  const oddelovac = document.createElement("span");
+  oddelovac.style.cssText = "width:1px; background:var(--line); margin:0 4px; align-self:stretch;";
+  bar.appendChild(oddelovac);
+
+  const OBTIZNOSTI = ["VSE", "EASY", "MEDIUM", "HARD", "INSANE"];
+  const OBTIZNOST_BARVA = { EASY: "var(--spinebright)", MEDIUM: "var(--bloom)", HARD: "var(--danger)", INSANE: "var(--danger)" };
+  OBTIZNOSTI.forEach(obt => {
+    const btn = document.createElement("button");
+    btn.textContent = obt === "VSE" ? "VŠE" : obt;
+    btn.className = "filter-btn" + (obt === state.aktivniObtiznost ? " active" : "");
+    if (obt !== "VSE" && obt === state.aktivniObtiznost) btn.style.borderColor = OBTIZNOST_BARVA[obt];
+    btn.addEventListener("click", () => { state.aktivniObtiznost = obt; vykresliFiltry(); vykresliUlohy(); });
+    bar.appendChild(btn);
+  });
+}
+
+function formatCas(ms) {
+  if (ms < 0) ms = 0;
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const zbyvaS = s % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2,'0')}:${zbyvaS.toString().padStart(2,'0')}`;
+  return `${m}:${zbyvaS.toString().padStart(2,'0')}`;
+}
+
+function stavUlohy(uloha) {
+  const p = state.progress[uloha.id];
+  if (!p) return "nezahajena";
+  if (p.solved) return "vyresena";
+  if (p.time_locked) return "casove_zamcena";
+  if (p.is_paused) return "pozastavena";
+  return "bezi";
+}
+
+function vykresliUlohy() {
+  const grid = document.getElementById("task-grid");
+  const empty = document.getElementById("empty-state");
+  grid.innerHTML = "";
+  const filtrovane = state.tasks.filter(u =>
+    (state.aktivniFiltr === "VSE" || u.kategorie === state.aktivniFiltr) &&
+    (state.aktivniObtiznost === "VSE" || u.obtiznost === state.aktivniObtiznost)
+  );
+
+  if (filtrovane.length === 0) { empty.style.display = "block"; return; }
+  empty.style.display = "none";
+  const ted = Date.now();
+
+  filtrovane.forEach(uloha => {
+    const diff = DIFF_CLASS[uloha.obtiznost] || "easy";
+    const stav = stavUlohy(uloha);
+    const p = state.progress[uloha.id];
+    const card = document.createElement("article");
+
+    let tridy = `task-card diff-${diff}`;
+    if (stav === "vyresena" || stav === "casove_zamcena") tridy += " locked";
+    if (stav === "casove_zamcena") tridy += " time-locked";
+    if (stav !== "vyresena" && stav !== "casove_zamcena") tridy += " clickable";
+    card.className = tridy;
+
+    let headerStatus = "";
+    if (stav === "vyresena") headerStatus = '<span class="task-solved">✓ vyřešeno</span>';
+    else if (stav === "casove_zamcena") headerStatus = '<span class="task-locked-msg">⏱ čas vypršel</span>';
+    else if (stav === "pozastavena") headerStatus = `<span class="task-timer-msg">⏸ pozastaveno (${formatCas(p.paused_remaining_ms)})</span>`;
+    else if (stav === "bezi") {
+      const zbyva = new Date(p.expires_at).getTime() - ted;
+      headerStatus = `<span class="task-timer-msg">⏱ ${formatCas(zbyva)}</span>`;
+    }
+
+    card.innerHTML = `
+      <div class="task-card-banner">${ikonaKategorie(uloha.kategorie)}</div>
+      <div class="task-card-body">
+        <div class="task-card-header">
+          <span class="task-cat">${escapeHtml(uloha.kategorie)}</span>
+          ${headerStatus}
+        </div>
+        <h3 class="task-title">${escapeHtml(uloha.nazev)}</h3>
+        <p class="task-desc">${escapeHtml(uloha.popis).slice(0, 90)}${uloha.popis.length > 90 ? '…' : ''}</p>
+        <div class="task-footer">
+          <span class="task-diff-badge">${escapeHtml(uloha.obtiznost)}</span>
+          <span class="task-points ${diff}">${uloha.aktualniBody} b</span>
+        </div>
+      </div>`;
+
+    if (stav !== "vyresena" && stav !== "casove_zamcena") {
+      card.addEventListener("click", () => otevritModal(uloha));
+    }
+    grid.appendChild(card);
+  });
+}
+
+/* ===================== MODAL ÚLOHY ===================== */
+
+function otevritModal(uloha) {
+  state.aktivniUlohaId = uloha.id;
+  const p = state.progress[uloha.id];
+  const stav = stavUlohy(uloha);
+
+  document.getElementById("modal-title").textContent = uloha.nazev;
+  document.getElementById("modal-subtitle").textContent = uloha.kategorie;
+  document.getElementById("modal-desc").textContent = uloha.popis;
+  document.getElementById("flag-input").value = "";
+  document.getElementById("modal-error").style.display = "none";
+
+  const startBox = document.getElementById("modal-start-box");
+  const attachEl = document.getElementById("modal-attachment");
+  const timerEl = document.getElementById("modal-timer");
+  const stopBtn = document.getElementById("modal-stop-btn");
+  const resumeBtn = document.getElementById("modal-resume-btn");
+  const attemptsEl = document.getElementById("modal-attempts");
+  const flagInput = document.getElementById("flag-input");
+  const submitBtn = document.getElementById("modal-submit");
+
+  if (stav === "nezahajena") {
+    startBox.style.display = "block";
+    document.getElementById("modal-limit-text").textContent = limitText(uloha.obtiznost);
+    attachEl.innerHTML = "";
+    timerEl.style.display = "none";
+    stopBtn.style.display = "none";
+    resumeBtn.style.display = "none";
+    attemptsEl.style.display = "none";
+    flagInput.style.display = "none";
+    submitBtn.style.display = "none";
+  } else {
+    startBox.style.display = "none";
+    attemptsEl.style.display = "inline-block";
+    attemptsEl.textContent = `Zbývají pokusy: ${p.attempts_left}`;
+
+    if (stav === "pozastavena") {
+      attachEl.innerHTML = "<p style='color:var(--inkdim); font-size:0.85rem; border:1px dashed var(--line); border-radius:6px; padding:12px; text-align:center;'>🔒 Soubor/odkaz je nedostupný, dokud je časovač pozastavený. Klikni na 'Pokračovat', ať se znovu odemkne.</p>";
+      timerEl.style.display = "inline-block";
+      timerEl.className = "modal-timer";
+      timerEl.textContent = `⏸ Pozastaveno — zbývalo: ${formatCas(p.paused_remaining_ms)}`;
+      stopBtn.style.display = "none";
+      resumeBtn.style.display = "inline-block";
+      flagInput.style.display = "none";
+      submitBtn.style.display = "none";
+    } else {
+      attachEl.innerHTML = uloha.priloha || "<p style='color:var(--inkdim); font-size:0.85rem;'>Tahle úloha nemá přiložený soubor — vyřeš ji jen z textu zadání.</p>";
+      flagInput.style.display = "block";
+      submitBtn.style.display = "block";
+      timerEl.style.display = "inline-block";
+      stopBtn.style.display = "inline-block";
+      resumeBtn.style.display = "none";
+      aktualizujModalCasovac(uloha);
+    }
+  }
+
+  document.getElementById("flag-modal").classList.add("open");
+}
+
+function limitText(obtiznost) {
+  const min = CASOVY_LIMIT_MIN[obtiznost] || 90;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}min`;
+  if (h > 0) return `${h}h`;
+  return `${m}min`;
+}
+
+function aktualizujModalCasovac(uloha) {
+  const p = state.progress[uloha.id];
+  if (!p) return;
+  const timerEl = document.getElementById("modal-timer");
+  const zbyva = new Date(p.expires_at).getTime() - Date.now();
+  timerEl.textContent = `⏱ Zbývá: ${formatCas(zbyva)}`;
+  timerEl.className = "modal-timer" + (zbyva < 5 * 60 * 1000 ? " warn" : "");
+}
+
+function zavritModal() {
+  document.getElementById("flag-modal").classList.remove("open");
+  state.aktivniUlohaId = null;
+}
+
+document.getElementById("modal-cancel").addEventListener("click", zavritModal);
+document.getElementById("flag-modal").addEventListener("click", e => { if (e.target.id === "flag-modal") zavritModal(); });
+document.getElementById("flag-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") odeslatFlag();
+  if (e.key === "Escape") zavritModal();
+});
+document.getElementById("modal-submit").addEventListener("click", odeslatFlag);
+
+/* ===================== SPUŠTĚNÍ ČASOVAČE ===================== */
+
+document.getElementById("modal-start-btn").addEventListener("click", async () => {
+  const uloha = state.tasks.find(u => u.id === state.aktivniUlohaId);
+  if (!uloha) return;
+
+  const btn = document.getElementById("modal-start-btn");
+  btn.disabled = true; btn.textContent = "Spouštím…";
+
+  const ted = new Date();
+  const limitMin = CASOVY_LIMIT_MIN[uloha.obtiznost] || 90;
+  const vyprsi = new Date(ted.getTime() + limitMin * 60 * 1000);
+
+  const { data, error } = await sb.from("task_progress").upsert({
+    user_id: state.session.user.id,
+    task_id: uloha.id,
+    started_at: ted.toISOString(),
+    expires_at: vyprsi.toISOString(),
+    solved: false,
+    time_locked: false,
+    attempts_left: 3,
+    points: 0
+  }).select().single();
+
+  btn.disabled = false; btn.textContent = "▶ Spustit časovač";
+
+  if (error) {
+    ukazToast("Nepodařilo se spustit časovač: " + error.message, "err");
+    return;
+  }
+
+  state.progress[uloha.id] = data;
+  otevritModal(uloha);
+  vykresliUlohy();
+});
+
+document.getElementById("modal-stop-btn").addEventListener("click", async () => {
+  const uloha = state.tasks.find(u => u.id === state.aktivniUlohaId);
+  if (!uloha) return;
+  const p = state.progress[uloha.id];
+  if (!p) return;
+
+  const btn = document.getElementById("modal-stop-btn");
+  btn.disabled = true; btn.textContent = "Pozastavuji…";
+
+  const zbyva = Math.max(0, new Date(p.expires_at).getTime() - Date.now());
+  const { data, error } = await sb.from("task_progress").update({
+    is_paused: true,
+    paused_remaining_ms: zbyva
+  }).eq("user_id", state.session.user.id).eq("task_id", uloha.id).select().single();
+
+  btn.disabled = false; btn.textContent = "⏸ Pozastavit";
+
+  if (error) {
+    ukazToast("Nepodařilo se pozastavit časovač: " + error.message, "err");
+    return;
+  }
+
+  state.progress[uloha.id] = data;
+  ukazToast("Časovač pozastaven — pokračuj, kdy budeš chtít.", "ok");
+  otevritModal(uloha);
+  vykresliUlohy();
+});
+
+document.getElementById("modal-resume-btn").addEventListener("click", async () => {
+  const uloha = state.tasks.find(u => u.id === state.aktivniUlohaId);
+  if (!uloha) return;
+  const p = state.progress[uloha.id];
+  if (!p) return;
+
+  const btn = document.getElementById("modal-resume-btn");
+  btn.disabled = true; btn.textContent = "Spouštím…";
+
+  const noveExpires = new Date(Date.now() + (p.paused_remaining_ms || 0));
+  const { data, error } = await sb.from("task_progress").update({
+    is_paused: false,
+    paused_remaining_ms: null,
+    expires_at: noveExpires.toISOString()
+  }).eq("user_id", state.session.user.id).eq("task_id", uloha.id).select().single();
+
+  btn.disabled = false; btn.textContent = "▶ Pokračovat";
+
+  if (error) {
+    ukazToast("Nepodařilo se pokračovat: " + error.message, "err");
+    return;
+  }
+
+  state.progress[uloha.id] = data;
+  otevritModal(uloha);
+  vykresliUlohy();
+  vykresliUlohy();
+});
+
+/* ===================== ODESLÁNÍ FLAGU ===================== */
+
+async function odeslatFlag() {
+  const uloha = state.tasks.find(u => u.id === state.aktivniUlohaId);
+  if (!uloha) return;
+  const p = state.progress[uloha.id];
+  const errEl = document.getElementById("modal-error");
+  const flag = document.getElementById("flag-input").value.trim();
+
+  if (!p) return;
+
+  if (p.time_locked) {
+    errEl.textContent = "Čas na tuhle úlohu vypršel, je natrvalo uzamčená.";
+    errEl.style.display = "block";
+    return;
+  }
+  if (new Date(p.expires_at).getTime() < Date.now()) {
+    await oznacCasoveVyprsele(uloha.id);
+    errEl.textContent = "Čas právě vypršel — úloha se uzamkla.";
+    errEl.style.display = "block";
+    vykresliUlohy();
+    return;
+  }
+  if (p.wrong_locked_until && new Date(p.wrong_locked_until).getTime() > Date.now()) {
+    const zbyva = Math.ceil((new Date(p.wrong_locked_until).getTime() - Date.now()) / 1000);
+    errEl.textContent = `Ochrana proti spamu, zkus to znovu za ${zbyva}s.`;
+    errEl.style.display = "block";
+    return;
+  }
+  if (!flag) {
+    errEl.textContent = "Zadej flag."; errEl.style.display = "block"; return;
+  }
+
+  const btn = document.getElementById("modal-submit");
+  btn.disabled = true; btn.textContent = "Ověřuji…";
+
+  if (flag === uloha._ocekavanyFlag) {
+    const { data, error } = await sb.from("task_progress").update({
+      solved: true, solved_at: new Date().toISOString(), points: uloha.aktualniBody
+    }).eq("user_id", state.session.user.id).eq("task_id", uloha.id).select().single();
+
+    btn.disabled = false; btn.textContent = "Odeslat Flag";
+
+    if (error) { ukazToast("Chyba při ukládání: " + error.message, "err"); return; }
+
+    state.progress[uloha.id] = data;
+    zavritModal();
+    ukazToast(`+${uloha.aktualniBody} bodů — flag správně!`, "ok");
+    aktualizujSkoreVNavu();
+    vykresliUlohy();
+  } else {
+    const novePokusy = p.attempts_left - 1;
+    const update = { attempts_left: novePokusy };
+    if (novePokusy <= 0) {
+      update.attempts_left = 3;
+      update.wrong_locked_until = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    }
+    const { data, error } = await sb.from("task_progress").update(update)
+      .eq("user_id", state.session.user.id).eq("task_id", uloha.id).select().single();
+
+    btn.disabled = false; btn.textContent = "Odeslat Flag";
+    if (!error) state.progress[uloha.id] = data;
+
+    if (novePokusy <= 0) {
+      errEl.textContent = "Vyčerpal jsi pokusy! Úloha je na 5 minut uzamčena.";
+    } else {
+      errEl.textContent = `Nesprávný flag. Zbývají pokusy: ${novePokusy}`;
+    }
+    errEl.style.display = "block";
+    document.getElementById("modal-attempts").textContent = `Zbývají pokusy: ${data ? data.attempts_left : novePokusy}`;
+  }
+}
+
+async function oznacCasoveVyprsele(taskId) {
+  const { data, error } = await sb.from("task_progress").update({ time_locked: true })
+    .eq("user_id", state.session.user.id).eq("task_id", taskId).select().single();
+  if (!error) state.progress[taskId] = data;
+}
+
+/* ===================== PRAVIDELNÝ TIK (odpočty + auto-zámek) ===================== */
+
+async function tikTak() {
+  const ted = Date.now();
+  let potrebaPrekreslit = false;
+
+  for (const taskId in state.progress) {
+    const p = state.progress[taskId];
+    if (!p.solved && !p.time_locked && !p.is_paused && p.expires_at && new Date(p.expires_at).getTime() < ted) {
+      await oznacCasoveVyprsele(Number(taskId));
+      potrebaPrekreslit = true;
+    }
+  }
+
+  const dashboardAktivni = document.getElementById("view-dashboard").classList.contains("active");
+  if (dashboardAktivni) {
+    vykresliUlohy();
+  }
+  if (state.aktivniUlohaId && document.getElementById("flag-modal").classList.contains("open")) {
+    const uloha = state.tasks.find(u => u.id === state.aktivniUlohaId);
+    if (uloha && state.progress[uloha.id] && !state.progress[uloha.id].solved && !state.progress[uloha.id].time_locked && !state.progress[uloha.id].is_paused) {
+      aktualizujModalCasovac(uloha);
+    }
+  }
+}
+
+function aktualizujSkoreVNavu() {
+  const skore = Object.values(state.progress).reduce((sum, p) => sum + (p.points || 0), 0);
+  const el = document.getElementById("score-display");
+  el.textContent = skore.toLocaleString("cs-CZ");
+  el.classList.remove("score-bump"); void el.offsetWidth; el.classList.add("score-bump");
+}
+
+/* ===================== ŽEBŘÍČEK ===================== */
+
+async function vykresliLeaderboard() {
+  const { data, error } = await sb.rpc("get_leaderboard");
+  if (error) { ukazToast("Nepodařilo se načíst žebříček.", "err"); return; }
+
+  const vsichni = (data || []).map((h, i) => ({ ...h, poradi: i + 1 }));
+  const top3 = document.getElementById("top3");
+  const [prvni, druhy, treti] = vsichni;
+
+  const MEDAILE = { 1: "🥇", 2: "🥈", 3: "🥉" };
+  const podiumCard = (h, rank) => `
+    <div class="podium-card rank-${rank}${h && h.username === state.username ? " you" : ""}">
+      <p class="podium-rank">${MEDAILE[rank]} #${rank}</p>
+      <p class="podium-name">${h ? escapeHtml(h.username) : "—"}</p>
+      <p class="podium-score">${h ? Number(h.skore).toLocaleString("cs-CZ") : "–"}</p>
+    </div>`;
+  top3.innerHTML = podiumCard(druhy, 2) + podiumCard(prvni, 1) + podiumCard(treti, 3);
+
+  const tbody = document.getElementById("leaderboard-body");
+  tbody.innerHTML = "";
+  vsichni.slice(3).forEach(h => {
+    const jsemTo = h.username === state.username;
+    const tr = document.createElement("tr");
+    tr.className = "fade-in" + (jsemTo ? " you" : "");
+    tr.innerHTML = `
+      <td class="rank">${h.poradi}</td>
+      <td class="player">${escapeHtml(h.username)}</td>
+      <td class="right">${h.vyreseno}</td>
+      <td class="right score">${Number(h.skore).toLocaleString("cs-CZ")}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ===================== INIT ===================== */
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  document.getElementById("loading-screen").classList.add("hidden");
+
+  if (session) {
+    await naStartApp(session);
+  } else {
+    document.getElementById("view-auth").classList.add("active");
+  }
+}
+init();
+</script>
+</body>
+</html>
+
+

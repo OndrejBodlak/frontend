@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThistleSec Merch — Bodlák edition</title>
+<style>
+  :root { --void:#0A0C0A; --panel:#12160F; --line:#232B1E; --bloom:#9D7FD1; --ink:#E8E6DD; --inkdim:#8A8F82; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--void); color:var(--ink); font-family:system-ui,sans-serif; padding: 32px 24px; }
+  .container { max-width: 480px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .sub { color: var(--inkdim); font-size: 0.85rem; margin: 0 0 24px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px; margin-bottom: 12px; }
+  .price { color: var(--bloom); font-weight: 700; }
+  /* Vypadá to jako neškodné utility třídy... */
+  .invisible { visibility: hidden; }
+  .opacity-0 { opacity: 0; }
+  .absolute { position: absolute; }
+  .h-0 { height: 0; overflow: hidden; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>ThistleSec Merch</h1>
+    <p class="sub">limitovaná edice pro řešitele CTF</p>
+
+    <div class="card">
+      <strong>Mikina "Bodlák" — černá</strong>
+      <p class="price">690 Kč</p>
+    </div>
+    <div class="card">
+      <strong>Nálepka set (5ks)</strong>
+      <p class="price">99 Kč</p>
+    </div>
+
+    <!-- Vývojář sem "dočasně" schoval poznámku a zapomněl ji smazat před nasazením. -->
+    <div class="invisible opacity-0 absolute h-0" id="dev-note" data-flag="thistle{t41lw1nd_c55_1nsp3ct}">
+      TODO: smazat před produkcí — flag: thistle&#123;t41lw1nd_c55_1nsp3ct&#125;
+    </div>
+
+  </div>
+</body>
+</html>

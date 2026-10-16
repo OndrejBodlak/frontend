@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThistleSec — Interní portál</title>
+<style>
+  :root {
+    --void: #0A0C0A; --panel: #12160F; --line: #232B1E;
+    --bloom: #9D7FD1; --spine: #7FA66B; --spinebright: #A8D68F;
+    --ink: #E8E6DD; --inkdim: #8A8F82;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--void); color: var(--ink);
+    font-family: system-ui, -apple-system, sans-serif; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    max-width: 440px; width: 100%; padding: 32px;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .accent { color: var(--bloom); }
+  .sub { color: var(--inkdim); font-size: 0.85rem; margin: 0 0 24px; }
+  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+  .row:last-of-type { border-bottom: none; }
+  .row span:first-child { color: var(--inkdim); }
+  .status { color: var(--spinebright); font-weight: 600; }
+  button {
+    margin-top: 24px; width: 100%; padding: 12px; border: none; border-radius: 6px;
+    background: var(--bloom); color: var(--void); font-weight: 700; font-size: 1rem; cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; }
+  .note { margin-top: 16px; font-size: 0.75rem; color: var(--inkdim); line-height: 1.5; }
+  code { background: var(--void); padding: 2px 6px; border-radius: 4px; color: var(--spine); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Thistle<span class="accent">Sec</span> — Interní portál</h1>
+    <p class="sub">přístup pro hosty · vnitřní síť</p>
+
+    <div class="row"><span>Uživatel</span><span>guest</span></div>
+    <div class="row"><span>Role</span><span>host (bez oprávnění)</span></div>
+    <div class="row"><span>Stav session</span><span class="status" id="session-status">nepřihlášen</span></div>
+
+    <button id="login-btn">Přihlásit se jako host</button>
+    <p class="note">
+      Tenhle portál běžel roky bez restartu a nikdo nikdy neřešil, jak dlouho
+      session vydrží. Možná stojí za to se podívat, co přesně server pošle
+      jako <code>Set-Cookie</code>, až se přihlásíš.
+    </p>
+  </div>
+
+<script>
+document.getElementById('login-btn').addEventListener('click', function () {
+  // Zranitelnost: session cookie s extrémně dlouhou životností (2 roky) a
+  // BEZ HttpOnly flagu, takže je čitelná i z JS/DevTools — token "nikdy nespí".
+  document.cookie = "thistlesec_session=dGhpc3RsZXtjMDBrMTNfd2lsdH0=; max-age=63072000; path=/";
+
+  document.getElementById('session-status').textContent = 'přihlášen (guest)';
+  document.getElementById('session-status').style.color = 'var(--spinebright)';
+  this.disabled = true;
+  this.textContent = 'Přihlášen';
+});
+</script>
+</body>
+</html>

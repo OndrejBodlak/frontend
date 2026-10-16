@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="ThistleSec" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Srpnovy pulmaraton - trenink</name>
+    <trkseg>
+      <trkpt lat="49.7475" lon="13.3776"><ele>310</ele><time>2026-08-02T06:00:00Z</time></trkpt>
+      <trkpt lat="49.7460" lon="13.3820"><ele>308</ele><time>2026-08-02T06:15:00Z</time></trkpt>
+      <trkpt lat="49.7412" lon="13.3901"><ele>301</ele><time>2026-08-02T06:35:00Z</time></trkpt>
+      <trkpt lat="49.7350" lon="13.3999"><ele>295</ele><time>2026-08-02T06:55:00Z</time></trkpt>
+      <trkpt lat="49.7288" lon="13.4102"><ele>290</ele><time>2026-08-02T07:12:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

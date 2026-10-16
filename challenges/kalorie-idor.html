@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitTrack — Deník stravy</title>
+<style>
+  :root { --void:#0A0C0A; --panel:#12160F; --line:#232B1E; --bloom:#9D7FD1; --spine:#7FA66B; --spinebright:#A8D68F; --danger:#C4685A; --ink:#E8E6DD; --inkdim:#8A8F82; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--void); color:var(--ink); font-family:system-ui,sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; max-width:460px; width:100%; padding:32px; }
+  h1 { font-size:1.3rem; margin:0 0 4px; }
+  .sub { color:var(--inkdim); font-size:0.8rem; margin:0 0 20px; }
+  label { display:block; font-size:0.8rem; color:var(--inkdim); margin-bottom:6px; }
+  input { width:100%; padding:10px; margin-bottom:16px; background:var(--void); border:1px solid var(--line); border-radius:6px; color:var(--ink); font-size:0.95rem; }
+  button { width:100%; padding:12px; border:none; border-radius:6px; background:var(--bloom); color:var(--void); font-weight:700; cursor:pointer; }
+  #result { margin-top:20px; padding:14px; border-radius:6px; font-size:0.88rem; display:none; white-space: pre-wrap; }
+  #result.ok { display:block; background:rgba(127,166,107,0.1); border:1px solid var(--spine); color:var(--spinebright); }
+  #result.no { display:block; background:rgba(196,104,90,0.1); border:1px solid var(--danger); color:var(--danger); }
+  .note { margin-top:16px; font-size:0.72rem; color:var(--inkdim); line-height:1.5; }
+  code { background:var(--void); padding:2px 6px; border-radius:4px; color:var(--spine); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>FitTrack — Deník stravy</h1>
+    <p class="sub">tvůj osobní přehled maker (moje user ID: <code>1842</code>)</p>
+
+    <label for="user-id">Zobrazit záznam uživatele #</label>
+    <input type="number" id="user-id" value="1842">
+    <button id="load-btn">Načíst deník</button>
+
+    <div id="result"></div>
+
+    <p class="note">
+      Endpoint: <code>GET /api/macros?user_id=&lt;ID&gt;</code> — appka ověřuje jen to, že jsi
+      přihlášený, ne jestli je to záznam skutečně tvůj. Co se stane, když zkusíš jiné ID?
+    </p>
+  </div>
+
+<script>
+// Simulace zranitelného backendu — "databáze" uživatelů bez autorizační kontroly (IDOR).
+const FAKE_DB = {
+  1842: { jmeno: "Ty", vecere: "kuřecí prsa, rýže, brokolice — 620 kcal" },
+  0: { jmeno: "admin", vecere: "steak, hranolky, pivo — 1450 kcal. Poznámka: flag je thistle{1d0r_c4l0r13s_m4cr0s}" }
+};
+
+document.getElementById('load-btn').addEventListener('click', function () {
+  const id = parseInt(document.getElementById('user-id').value, 10);
+  console.log("GET /api/macros?user_id=" + id);
+  const el = document.getElementById('result');
+  const zaznam = FAKE_DB[id];
+
+  if (zaznam) {
+    el.className = 'ok';
+    el.textContent = `Uživatel: ${zaznam.jmeno}\nVčerejší večeře: ${zaznam.vecere}`;
+  } else {
+    el.className = 'no';
+    el.textContent = 'Záznam s tímto ID neexistuje.';
+  }
+});
+</script>
+</body>
+</html>

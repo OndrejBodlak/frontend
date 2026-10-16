@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaSaZu — Rezervace vstupenek</title>
+<style>
+  :root {
+    --void: #0A0C0A; --panel: #12160F; --line: #232B1E;
+    --bloom: #9D7FD1; --spine: #7FA66B; --spinebright: #A8D68F;
+    --danger: #C4685A; --ink: #E8E6DD; --inkdim: #8A8F82;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--void); color: var(--ink);
+    font-family: system-ui, -apple-system, sans-serif; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    max-width: 440px; width: 100%; padding: 32px;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .accent { color: var(--bloom); }
+  .sub { color: var(--inkdim); font-size: 0.85rem; margin: 0 0 24px; }
+  label { display: block; font-size: 0.8rem; color: var(--inkdim); margin-bottom: 6px; }
+  select, input {
+    width: 100%; padding: 10px; margin-bottom: 16px; background: var(--void);
+    border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-size: 0.95rem;
+  }
+  button {
+    width: 100%; padding: 12px; border: none; border-radius: 6px;
+    background: var(--bloom); color: var(--void); font-weight: 700; font-size: 1rem; cursor: pointer;
+  }
+  #result { margin-top: 20px; padding: 14px; border-radius: 6px; font-size: 0.9rem; display: none; }
+  #result.ok { display: block; background: rgba(127,166,107,0.1); border: 1px solid var(--spine); color: var(--spinebright); }
+  #result.no { display: block; background: rgba(196,104,90,0.1); border: 1px solid var(--danger); color: var(--danger); }
+  .note { margin-top: 16px; font-size: 0.75rem; color: var(--inkdim); line-height: 1.5; }
+  code { background: var(--void); padding: 2px 6px; border-radius: 4px; color: var(--spine); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>SaSaZu — Rezervace vstupenek</h1>
+    <p class="sub">Fakeminek Live · dnes večer · VYPRODÁNO (standard vstupenky)</p>
+
+    <label for="ticket-type">Typ vstupenky</label>
+    <!-- Tohle pole klidně poupravuj v Inspect Elementu, server (JS) mu slepě věří. -->
+    <input type="hidden" id="ticket-type" value="standard">
+
+    <label for="jmeno">Jméno pro rezervaci</label>
+    <input type="text" id="jmeno" placeholder="Tvoje jméno" value="Host">
+
+    <button id="submit-btn">Odeslat rezervaci</button>
+
+    <div id="result"></div>
+
+    <p class="note">
+      Formulář posílá na server (simulovaně) JSON tělo s polem
+      <code>ticket_type</code>. Frontend defaultně posílá <code>"standard"</code>
+      — a server (tahle stránka) mu bez ověření věří. Zkus si otevřít
+      DevTools → Console a podívej se, jak přesně se ta "POST" odesílá.
+    </p>
+  </div>
+
+<script>
+/*
+ * Simulace backendového endpointu POST /api/fitness... pardon, /api/reservation.
+ * V reálném CTF by tohle běželo na serveru a validace by chyběla tam.
+ * Tady je to schválně v client-side JS, aby šlo bez skutečného backendu
+ * demonstrovat přesně tu samou chybu: server (zde: tahle funkce) slepě
+ * důvěřuje hodnotě, kterou pošle klient.
+ */
+function fakeApiReservation(payload) {
+  console.log("POST /api/reservation", JSON.stringify(payload));
+  const vipHodnoty = ["vip", "backstage", "premium", "vip_backstage"];
+  if (vipHodnoty.includes(String(payload.ticket_type).toLowerCase())) {
+    return { ok: true, message: "Backstage VIP pass vygenerován.", flag: "thistle{b4ckst4g3_p4ss_gr4nt3d}" };
+  }
+  return { ok: false, message: "Standard vstupenky jsou vyprodané. Rezervace zamítnuta." };
+}
+
+document.getElementById('submit-btn').addEventListener('click', function () {
+  const payload = {
+    jmeno: document.getElementById('jmeno').value,
+    ticket_type: document.getElementById('ticket-type').value
+  };
+
+  const odpoved = fakeApiReservation(payload);
+  const el = document.getElementById('result');
+
+  if (odpoved.ok) {
+    el.className = 'ok';
+    el.innerHTML = `✅ ${odpoved.message}<br><br>Flag: <code>${odpoved.flag}</code>`;
+  } else {
+    el.className = 'no';
+    el.textContent = '❌ ' + odpoved.message;
+  }
+});
+</script>
+</body>
+</html>
